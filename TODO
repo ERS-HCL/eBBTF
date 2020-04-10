@@ -1,0 +1,37 @@
+eBBTF TODO
+----------
+
+User Interface
+~~~~~~~~~~~~~~~~~~~~~
+The test suite now assumes the device under test will have a serial console
+interface to execute the test cases. A minimal GUI with test execution , reporting
+and supporting different interface to execute the testing is planned in upcoming releases.
+
+Failure Analysis
+~~~~~~~~~~~~~~~~~~~~
+
+In case of a test failure,currently the framework only provides a "test failed result"
+and to an extent provides what kind of failure like peripheral bus not found , read error
+and write errors etc.
+
+It would be a very helpful to the test engineer and the hardware team,if the failure can
+pin point the exact issue.If this feature can be added,lot of hardware and software 
+design issues can be solved.
+
+New test cases
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Following test cases are planned to be added in upcoming versions 
+
+1. SENSORS - Motion sensors,temperature sensors etc
+2. DISPLAY - Parallel and serial Displays
+3. TOUCHSCREEN - Touchscreen calibrations
+4. WI-FI - accesspoint connection,basic communication
+5. BLUETOOTH - profiles test, basic data transfer
+6. ADC - calibration test
+7. WATCHDOG - timeouts test
+8. NAND FLASH - read/write test, ECC test
+
+
+                                                                                                                           1,1           Top
+

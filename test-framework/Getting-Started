@@ -1,0 +1,192 @@
+Embedded Board Bring Up Test Framework
+================================================================================
+
+1) OBJECTIVE:
+================================================================================
+* Validate various devices and interfaces functionality during board bring up .
+* Support for Manufacturing Configuration
+* Maximize use of open source software and contribute to improve it.
+* Maximize code reuse across different platforms.
+* Make it easy to support new embedded platforms.
+
+2) HOW TO ADD NEW TESTS CASES TO EXISTING PLATFORMS:
+================================================================================
+* Add test case source code to following directory:
+ 	
+	eBBTF/test-framework/testsuite/<test_devicename>.c
+ 	eBBTF/test-framework/testsuite/<test_devicename>.h
+
+* The test function should suffix with <test_function>_test
+
+* Add the new test case file name to the makefile
+	open eBBTF/test-framework/testsuite/Makefile
+	Add to the corresponding platform
+		obj-$(CONFIG_BOARDDIAG) += <test_devicename>.o
+		
+* Link the newly created test case to the one of the existing supported platform 
+ 	
+	open the file
+		eBBTF/test-framework/supported-platforms/<platform_name>/<platform_name>.c
+		use INVOKE_TEST_WITH_PARAM macro to link the new created test case
+		INVOKE_TEST_WITH_PARAM( <platform_name>, <test desciption>, <test-function>, <test-function-suffix>) = {
+			<test-function args>
+		};
+
+ 
+3) HOW TO ADD NEW PLATFORMS
+================================================================================
+* Open the file eBBTF/test-framework/common/testlist.c and add the following
+
+	* Add new platform name MACRO as BOARD_<new_platform_name>
+	* Add the following switch case in function "ProcessTestList(uint32_t board_index)"
+		case BOARD_<new_platform_name>:
+                	caseSetTestList(am335x_bbb);
+                	break;
+* Create a directory and source in the following path for the new platform
+	* eBBTF/test-framework/supported-platforms/<new_platform_name>/<new_platform_name>.c
+	* eBBTF/test-framework/supported-platforms/<new_platform_name>/Makefile
+		obj-$(CONFIG_BOARDDIAG) += <new_platform_name>.o
+
+* Add the new platform support in test-framework/u-boot/Makefile
+
+	ifeq ($(<U-BOOT-BOARD-CONFIGURATION>),y)
+	KBUILD_CFLAGS += -DBOARD_DEFAULT=BOARD_<NEW_PLATFORM>
+	libs-$(CONFIG_BOARDDIAG) += ../test-framework/supported-platforms/<new_platform_name>/
+	#endif
+
+	For all supported boards there are ready-to-use default configurations available in u-boot; 
+	just type "make <board_name>_defconfig".
+
+	Example: For a beagle bone black evm platform type:
+
+	cd u-boot
+	make am335x_defconfig (uses CONFIG_ARCH_OMAP2PLUS as config file)
+
+4) eBBTF IMPLEMENTATION GUIDELINES
+================================================================================
+ * Write you test code using c.
+ * Use the test functions with configuration parameters. The configuration
+   parameters mostly should vary from different platforms. Using the parameters 
+   it writes a value to test location then reads it back.
+ * The configuration structure for a test case related header file needs to be defined should
+   have a typedef which MUST match the test function name with the prefix "A_" or the 
+   INVOKE_TEST_WITH_PARAM macro will not work.
+ * The test function shall always return TestResultTypes_e type
+ * Use the events defined in DiagErrEventIDTypes_e in test-framework/common/eventId.h 
+   for logging or console logging purpose purpose. Add new events in case events are
+   not present corresponding to the test case
+
+
+
+5) BUILDING eBBTF
+================================================================================
+
+eBBTF builds along with U-Boot build.
+
+5.1) Environment Setup for eBBTF build
+================================================================================
+In order to cross compile eBBTF, a cross-compiler tool-chain is required.
+ Use either Linaro Toolchain or toolchain suggested for the platform used.
+
+ Set the environment variable PATH to contain the binaries of the toolchain cross-compiler tool-chain.
+     For example, in bash:
+             $ export PATH=/opt/toolchainpath/bin:$PATH
+ Test if PATH is set properly by running following command
+  * For Linaro Toolchain
+    $ arm-linux-gnueabihf-gcc -v
+
+5.2) How to Cross-Compile and Install
+================================================================================
+
+Note: CROSS_COMPILE may be set differently than the examples showing in this section.
+   for Linaro Toolchain: CROSS_COMPILE=arm-linux-gnueabihf-
+
+ * cd to eBBTF/u-boot directory
+   $ Ensure cross compiler path is exported as stated above
+   $ make NAME_defconfig
+	where "NAME_defconfig" is the name of one of the existing uboot 
+	configurations
+   $ make or make all
+ * Now all working U-Boot images is ready for download to/installation on target
+	- "u-boot.bin" is a raw binary image
+	- "u-boot" is an image in ELF binary format
+	- "u-boot.srec" is in Motorola S-Record format
+ * By default the build is performed locally and the objects are saved
+   in the source directory.
+
+8) HOW TO RUN TESTS
+================================================================================
+
+Once u-boot is loaded onto to the target , use "boarddiag" command to run eBBTF
+
+* boarddiag - Board diagnostics Software
+
+        Usage:
+        boarddiag [args...]
+                list           -- List available tests
+                run <test_num> -- Run individual test by test ID specified in the list
+                runAll         -- Run all tests
+                        loop <times> -- Set loop to execute a test n number of times.
+
+* boarddiag list -- Shows all the available test cases
+* boarddiag run <test_num> -- Run individual test cases using test numbers specified
+                              in the 
+* boarddiag runAll - Run all tests displayed in the display list
+* boarddiag runAll loop <times> - Repeat all tests execution loop number of times
+
+9) U-Boot Source
+===============================================================================
+
+Currently u-boot version 202004rc4 is used . But any u-boot version can be used .
+
+* Replace the u-boot directory in eBBTF directory with the u-boot version you would
+  like to use
+* Add support for eBBTF in the u-boot top level Makefile
+
+	* In KBUILD_CFLAGS
+
+	KBUILD_CFLAGS += -DBOARD_THIS_IS_UBOOT
+
+        * In platform support
+
+	libs-$(CONFIG_BOARDDIAG) += ../test-framework/common/
+
+	ifeq ($(CONFIG_TARGET_RPI_2),y)
+	KBUILD_CFLAGS += -DBOARD_DEFAULT=BCM2836_RPI2
+	libs-$(CONFIG_BOARDDIAG) += ../test-framework/supported-platforms/bcm2836_rpi2/
+	else ifeq ($(CONFIG_ARCH_OMAP2PLUS),y)
+	KBUILD_CFLAGS += -DBOARD_DEFAULT=AM335X_BBB
+	libs-$(CONFIG_BOARDDIAG) += ../test-framework/supported-platforms/am335x_bbb/
+	endif
+
+	libs-$(CONFIG_BOARDDIAG) += ../test-framework/testsuite/
+	libs-$(CONFIG_BOARDDIAG) += ../test-framework/utils/
+	
+
+        * In CLEAN_FILES
+
+	CLEAN_FILES += ../test-framework/common/*.su
+	CLEAN_FILES += ../test-framework/common/*.o
+	CLEAN_FILES += ../test-framework/common/.*.*.cmd
+	CLEAN_FILES +=../test-framework/supported-platforms/am335x_bbb/*.su
+	CLEAN_FILES +=../test-framework/supported-platforms/am335x_bbb/*.o
+	CLEAN_FILES +=../test-framework/supported-platforms/am335x_bbb/.*.*.cmd
+	CLEAN_FILES +=../test-framework/supported-platforms/bcm2836_rpi2/*.su
+	CLEAN_FILES +=../test-framework/supported-platforms/bcm2836_rpi2/*.o
+	CLEAN_FILES +=../test-framework/supported-platforms/bcm2836_rpi2/.*.*.cmd
+	CLEAN_FILES +=../test-framework/testsuite/*.su
+	CLEAN_FILES +=../test-framework/testsuite/*.o
+	CLEAN_FILES +=../test-framework/testsuite/*.su
+	CLEAN_FILES +=../test-framework/testsuite/.*.*.cmd
+	CLEAN_FILES +=../test-framework/utils/*.o
+	CLEAN_FILES +=../test-framework/utils/*.su
+	CLEAN_FILES +=../test-framework/utils/.*.*.cmd
+
+10) HELP/SUPPORT
+================================================================================
+   Please submit your queries or comments to
+        arjun-r@hcl.com
+        titus.dhanasingh@hcl.com
+        sathya-d@hcl.com
+
+
